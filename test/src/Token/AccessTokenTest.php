@@ -10,7 +10,7 @@ use Mockery;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-class AccessTokenTest extends TestCase
+final class AccessTokenTest extends TestCase
 {
 
     /**
@@ -67,8 +67,8 @@ class AccessTokenTest extends TestCase
     {
         $options = [
             'access_token' => 'access_token',
-            'expires' => static::NOW - 1,
-            'clock' => ProgrammableClock::newFromTimestamp(static::NOW),
+            'expires' => self::NOW - 1,
+            'clock' => ProgrammableClock::newFromTimestamp(self::NOW),
         ];
         $token = $this->getAccessToken($options);
 
@@ -95,18 +95,18 @@ class AccessTokenTest extends TestCase
 
     public function testHasNotExpiredWhenPropertySetInFuture()
     {
-        $clock = ProgrammableClock::newFromTimestamp(static::NOW);
+        $clock = ProgrammableClock::newFromTimestamp(self::NOW);
         $token = Mockery::mock(AccessToken::class)->makePartial();
 
         $token
             ->shouldReceive('getClock')
             ->once()
-            ->andReturn(ProgrammableClock::newFromTimestamp(static::NOW));
+            ->andReturn(ProgrammableClock::newFromTimestamp(self::NOW));
 
         $token
             ->shouldReceive('getExpires')
             ->once()
-            ->andReturn(static::NOW + 1);
+            ->andReturn(self::NOW + 1);
 
         $this->assertFalse($token->hasExpired());
     }
@@ -117,7 +117,7 @@ class AccessTokenTest extends TestCase
         $token
             ->shouldReceive('getExpires')
             ->once()
-            ->andReturn(static::NOW - 1);
+            ->andReturn(self::NOW - 1);
 
         $this->assertTrue($token->hasExpired());
     }
@@ -152,7 +152,7 @@ class AccessTokenTest extends TestCase
         $options = [
             'access_token' => 'mock_access_token',
             'refresh_token' => 'mock_refresh_token',
-            'expires' => static::NOW + 3600,
+            'expires' => self::NOW + 3600,
             'resource_owner_id' => 'mock_resource_owner_id',
         ];
 
@@ -167,7 +167,7 @@ class AccessTokenTest extends TestCase
         $options = [
             'access_token' => 'mock_access_token',
             'refresh_token' => 'mock_refresh_token',
-            'expires' => static::NOW + 3600,
+            'expires' => self::NOW + 3600,
             'resource_owner_id' => 'mock_resource_owner_id',
             'custom_thing' => 'i am a test!',
         ];
