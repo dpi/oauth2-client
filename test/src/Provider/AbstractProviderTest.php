@@ -571,7 +571,7 @@ class AbstractProviderTest extends TestCase
         $newTime = new \DateTimeImmutable('2nd February 2013 1pm');
         $clock->setTime($newTime);
 
-        $this->assertEquals($newTime->getTimestamp(), $token->getTimeNow());
+        $this->assertEquals($newTime->getTimestamp(), $token->getClock()->now()->getTimestamp());
 
         $client
             ->shouldHaveReceived('send')

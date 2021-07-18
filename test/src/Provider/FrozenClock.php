@@ -3,11 +3,13 @@
 namespace League\OAuth2\Client\Test\Provider;
 
 use League\OAuth2\Client\Provider\Clock;
+use League\OAuth2\Client\Provider\ClockInterface;
+
 
 /**
  * A clock with a frozen time for testing.
  */
-class FrozenClock extends Clock
+class FrozenClock implements ClockInterface
 {
 
     /**

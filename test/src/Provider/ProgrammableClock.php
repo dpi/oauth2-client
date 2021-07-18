@@ -2,12 +2,13 @@
 
 namespace League\OAuth2\Client\Test\Provider;
 
-use League\OAuth2\Client\Provider\Clock;
+use League\OAuth2\Client\Provider\ClockInterface;
+
 
 /**
  * A clock which must be initialised, and may be changed at any time.
  */
-class ProgrammableClock extends Clock
+class ProgrammableClock implements ClockInterface
 {
 
     /**
@@ -37,5 +38,15 @@ class ProgrammableClock extends Clock
         $this->time = $time;
 
         return $this;
+    }
+
+    /**
+     * @param int $time seconds since epoch
+     * @return self
+     */
+    public static function newFromTimestamp($time)
+    {
+        return (new self())
+            ->setTime(new \DateTimeImmutable('@' . $time));
     }
 }

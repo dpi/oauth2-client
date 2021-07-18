@@ -15,7 +15,7 @@
 namespace League\OAuth2\Client\Token;
 
 use JsonSerializable;
-use League\OAuth2\Client\Provider\Clock;
+use League\OAuth2\Client\Provider\ClockInterface;
 use RuntimeException;
 
 interface AccessTokenInterface extends JsonSerializable
@@ -70,20 +70,4 @@ interface AccessTokenInterface extends JsonSerializable
      * @return array
      */
     public function jsonSerialize();
-
-    /**
-     * Sets the clock.
-     *
-     * @param Clock $clock a clock.
-     *
-     * @return void
-     */
-    public function setClock(Clock $clock);
-
-    /**
-     * Get the current time, whether real or simulated.
-     *
-     * @return int
-     */
-    public function getTimeNow();
 }

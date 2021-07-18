@@ -16,14 +16,18 @@ namespace League\OAuth2\Client\Token;
 
 use InvalidArgumentException;
 use League\OAuth2\Client\Provider\Clock;
+use League\OAuth2\Client\Provider\ClockAwareInterface;
+use League\OAuth2\Client\Provider\ClockInterface;
 use RuntimeException;
+
+
 
 /**
  * Represents an access token.
  *
  * @link http://tools.ietf.org/html/rfc6749#section-1.4 Access Token (RFC 6749, §1.4)
  */
-class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInterface
+class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInterface, ClockAwareInterface
 {
     /**
      * @var string
@@ -51,60 +55,18 @@ class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInter
     protected $values = [];
 
     /**
-     * The current time, or NULL to get the true current time via PHP.
-     *
-     * @var int|null
-     */
-    private static $timeNow;
-
-    /**
      * The clock.
      *
-     * @var Clock
+     * @var ClockInterface
      */
     protected $clock;
 
     /**
-     * Sets the current time.
-     *
-     * @param int $timeNow the time in seconds since epoch
-     * @return void
+     * {@inheritDoc}
      */
-    public static function setTimeNow($timeNow)
+    public function getClock(): ClockInterface
     {
-        self::$timeNow = $timeNow;
-    }
-
-    /**
-     * Reset the current time so the true current time via PHP is used.
-     *
-     * @return void
-     */
-    public static function resetTimeNow()
-    {
-        self::$timeNow = null;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function setClock(Clock $clock)
-    {
-        $this->clock = $clock;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getTimeNow()
-    {
-        if (self::$timeNow) {
-            return self::$timeNow;
-        } elseif (isset($this->clock)) {
-            return $this->clock->now()->getTimestamp();
-        } else {
-            return time();
-        }
+        return $this->clock ? $this->clock : new Clock();
     }
 
     /**
@@ -134,6 +96,8 @@ class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInter
             $this->clock = $options['clock'];
         }
 
+        $ts = $this->getClock()->now()->getTimestamp();
+
         // We need to know when the token expires. Show preference to
         // 'expires_in' since it is defined in RFC6749 Section 5.1.
         // Defer to 'expires' if it is provided instead.
@@ -142,14 +106,14 @@ class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInter
                 throw new \InvalidArgumentException('expires_in value must be an integer');
             }
 
-            $this->expires = $options['expires_in'] != 0 ? $this->getTimeNow() + $options['expires_in'] : 0;
+            $this->expires = $options['expires_in'] != 0 ? $ts + $options['expires_in'] : 0;
         } elseif (!empty($options['expires'])) {
             // Some providers supply the seconds until expiration rather than
             // the exact timestamp. Take a best guess at which we received.
             $expires = $options['expires'];
 
             if (!$this->isExpirationTimestamp($expires)) {
-                $expires += $this->getTimeNow();
+                $expires += $ts;
             }
 
             $this->expires = $expires;
@@ -224,7 +188,7 @@ class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInter
             throw new RuntimeException('"expires" is not set on the token');
         }
 
-        return $expires < $this->getTimeNow();
+        return $expires < $this->getClock()->now()->getTimestamp();
     }
 
     /**

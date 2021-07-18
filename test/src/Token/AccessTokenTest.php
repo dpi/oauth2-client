@@ -4,6 +4,7 @@ namespace League\OAuth2\Client\Test\Token;
 
 use InvalidArgumentException;
 use League\OAuth2\Client\Test\Provider\FrozenClock;
+use League\OAuth2\Client\Test\Provider\ProgrammableClock;
 use League\OAuth2\Client\Token\AccessToken;
 use Mockery;
 use PHPUnit\Framework\TestCase;
@@ -19,27 +20,11 @@ class AccessTokenTest extends TestCase
      */
     const NOW = 1359504000;
 
-    /**
-     * BC teardown.
-     *
-     * This is for backwards compatibility of older PHP versions. Ideally we would just implement a tearDown() here but
-     * older PHP versions this library supports don't have return typehint support, so this is the workaround.
-     *
-     * @return void
-     */
-    private static function tearDownForBackwardsCompatibility()
-    {
-        /* reset the test double time if it was set */
-        AccessToken::resetTimeNow();
-    }
-
     public function testInvalidRefreshToken()
     {
         $this->expectException(InvalidArgumentException::class);
 
         $token = $this->getAccessToken(['invalid_access_token' => 'none']);
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     protected function getAccessToken($options = [])
@@ -51,87 +36,41 @@ class AccessTokenTest extends TestCase
     {
         // Correction happens in constructor so time needs to be set before
         // object is created.
-        AccessToken::setTimeNow(static::NOW);
-        $options = ['access_token' => 'access_token', 'expires_in' => 100];
+        $options = [
+            'access_token' => 'access_token',
+            'expires_in' => 100,
+            'clock' => new FrozenClock(),
+        ];
         $token = $this->getAccessToken($options);
 
         $expires = $token->getExpires();
 
-        $this->assertEquals(static::NOW + 100, $expires);
-
-        self::tearDownForBackwardsCompatibility();
+        $this->assertEquals(FrozenClock::NOW + 100, $expires);
     }
 
     public function testExpiresInCorrectionUsingSetTimeNow()
     {
-        /* set fake time at 2020-01-01 00:00:00 */
-        AccessToken::setTimeNow(1577836800);
-        $options = ['access_token' => 'access_token', 'expires_in' => 100];
+        $options = [
+            'access_token' => 'access_token',
+            'expires_in' => 100,
+            'clock' => new FrozenClock(),
+        ];
         $token = $this->getAccessToken($options);
 
         $expires = $token->getExpires();
 
         $this->assertNotNull($expires);
-        $this->assertEquals(1577836900, $expires);
-
-        self::tearDownForBackwardsCompatibility();
-    }
-
-    public function testSetClockConstructor()
-    {
-        $clock = new FrozenClock();
-        $token = $this->getAccessToken(['access_token' => 'asdf', 'clock' => $clock]);
-        $this->assertEquals(FrozenClock::NOW, $token->getTimeNow());
-    }
-
-    public function testSetClockMethod()
-    {
-        $clock = new FrozenClock();
-        $token = $this->getAccessToken(['access_token' => 'asdf']);
-        $token->setClock($clock);
-        $this->assertEquals(FrozenClock::NOW, $token->getTimeNow());
-    }
-
-    public function testSetTimeNow()
-    {
-        AccessToken::setTimeNow(1577836800);
-        $timeNow = $this->getAccessToken(['access_token' => 'asdf'])->getTimeNow();
-
-        $this->assertEquals(1577836800, $timeNow);
-
-        self::tearDownForBackwardsCompatibility();
-    }
-
-    public function testSetClockAndSetTime()
-    {
-        // When both a clock and time set, time wins over clock.
-        $clock = new FrozenClock();
-        AccessToken::setTimeNow(static::NOW);
-        $token = $this->getAccessToken(['access_token' => 'asdf', 'clock' => $clock]);
-        $this->assertEquals(static::NOW, $token->getTimeNow());
-    }
-
-    public function testResetTimeNow()
-    {
-        AccessToken::setTimeNow(static::NOW);
-        $token = $this->getAccessToken(['access_token' => 'asdf']);
-
-        $this->assertEquals(static::NOW, $token->getTimeNow());
-        AccessToken::resetTimeNow();
-
-        $this->assertNotEquals(static::NOW, $token->getTimeNow());
-
-        $timeBeforeAssertion = time();
-        $this->assertGreaterThanOrEqual($timeBeforeAssertion, $token->getTimeNow());
-
-        self::tearDownForBackwardsCompatibility();
+        $this->assertEquals(FrozenClock::NOW + 100, $expires);
     }
 
     public function testExpiresPastTimestamp()
     {
-        $options = ['access_token' => 'access_token', 'expires' => static::NOW - 1];
+        $options = [
+            'access_token' => 'access_token',
+            'expires' => static::NOW - 1,
+            'clock' => ProgrammableClock::newFromTimestamp(static::NOW),
+        ];
         $token = $this->getAccessToken($options);
-        AccessToken::setTimeNow(static::NOW);
 
         $this->assertTrue($token->hasExpired());
 
@@ -139,8 +78,6 @@ class AccessTokenTest extends TestCase
         $token = $this->getAccessToken($options);
 
         $this->assertFalse($token->hasExpired());
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     public function testGetRefreshToken()
@@ -154,47 +91,35 @@ class AccessTokenTest extends TestCase
         $refreshToken = $token->getRefreshToken();
 
         $this->assertEquals($options['refresh_token'], $refreshToken);
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     public function testHasNotExpiredWhenPropertySetInFuture()
     {
-        $options = [
-            'access_token' => 'access_token'
-        ];
+        $clock = ProgrammableClock::newFromTimestamp(static::NOW);
+        $token = Mockery::mock(AccessToken::class)->makePartial();
 
-        $expectedExpires = static::NOW + 1;
+        $token
+            ->shouldReceive('getClock')
+            ->once()
+            ->andReturn(ProgrammableClock::newFromTimestamp(static::NOW));
 
-        AccessToken::setTimeNow(static::NOW);
-        $token = Mockery::mock(AccessToken::class, [$options])->makePartial();
         $token
             ->shouldReceive('getExpires')
             ->once()
-            ->andReturn($expectedExpires);
+            ->andReturn(static::NOW + 1);
 
         $this->assertFalse($token->hasExpired());
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     public function testHasExpiredWhenPropertySetInPast()
     {
-        $options = [
-            'access_token' => 'access_token'
-        ];
-
-        $expectedExpires = static::NOW - 1;
-
-        $token = Mockery::mock(AccessToken::class, [$options])->makePartial();
+        $token = Mockery::mock(AccessToken::class)->makePartial();
         $token
             ->shouldReceive('getExpires')
             ->once()
-            ->andReturn($expectedExpires);
+            ->andReturn(static::NOW - 1);
 
         $this->assertTrue($token->hasExpired());
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     public function testCannotReportExpiredWhenNoExpirationSet()
@@ -207,8 +132,6 @@ class AccessTokenTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         $hasExpired = $token->hasExpired();
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     public function testInvalidExpiresIn()
@@ -221,8 +144,6 @@ class AccessTokenTest extends TestCase
          $this->expectException(InvalidArgumentException::class);
 
          $token = $this->getAccessToken($options);
-
-         self::tearDownForBackwardsCompatibility();
     }
 
 
@@ -239,8 +160,6 @@ class AccessTokenTest extends TestCase
         $jsonToken = json_encode($token);
 
         $this->assertEquals($options, json_decode($jsonToken, true));
-
-        self::tearDownForBackwardsCompatibility();
     }
 
     public function testValues()
@@ -260,7 +179,5 @@ class AccessTokenTest extends TestCase
         $this->assertTrue(is_array($values));
         $this->assertArrayHasKey('custom_thing', $values);
         $this->assertSame($options['custom_thing'], $values['custom_thing']);
-
-        self::tearDownForBackwardsCompatibility();
     }
 }
