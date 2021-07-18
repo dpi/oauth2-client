@@ -64,7 +64,7 @@ class AccessToken implements AccessTokenInterface, ResourceOwnerAccessTokenInter
     /**
      * {@inheritDoc}
      */
-    public function getClock(): ClockInterface
+    public function getClock()
     {
         return $this->clock ? $this->clock : new Clock();
     }
