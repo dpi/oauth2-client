@@ -37,7 +37,7 @@ use UnexpectedValueException;
  *
  * @link http://tools.ietf.org/html/rfc6749#section-1.1 Roles (RFC 6749, §1.1)
  */
-abstract class AbstractProvider
+abstract class AbstractProvider implements ClockAwareInterface
 {
     use ArrayAccessorTrait;
     use GuardedPropertyTrait;
@@ -265,11 +265,10 @@ abstract class AbstractProvider
     /**
      * Sets the clock.
      *
-     * @param  Clock $clock
-     *
+     * @param ClockInterface $clock the clock
      * @return self
      */
-    public function setClock(Clock $clock)
+    public function setClock(ClockInterface $clock)
     {
         $this->clock = $clock;
 
@@ -284,7 +283,7 @@ abstract class AbstractProvider
      */
     public function getClock()
     {
-        return $this->clock;
+        return $this->clock ? $this->clock : new Clock();
     }
 
     /**

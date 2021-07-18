@@ -14,7 +14,7 @@
 
 namespace League\OAuth2\Client\Tool;
 
-use League\OAuth2\Client\Provider\Clock;
+use League\OAuth2\Client\Provider\ClockInterface;
 use League\OAuth2\Client\Token\AccessToken;
 use League\OAuth2\Client\Token\AccessTokenInterface;
 

@@ -5,7 +5,7 @@ namespace League\OAuth2\Client\Provider;
 /**
  * Represents an implementation of a Clock.
  */
-class Clock
+final class Clock implements ClockInterface
 {
 
   /**
